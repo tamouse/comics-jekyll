@@ -1,3 +1,8 @@
-_sitepublic/
+public/
 .last_run.yaml
 log/
+tmp/
+source/images/
+source/index.html
+source/_posts/*.html
+

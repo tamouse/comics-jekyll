@@ -1,8 +1,8 @@
 GIT
   remote: git://github.com/tamouse/scrapers.git
-  revision: cbcbbef314c18f01954b9f488bad7078fbf2feb7
+  revision: 7b0322c241e90ada9f019bf654aad4c3b71747dd
   specs:
-    scrapers (0.2.1)
+    scrapers (0.3.0)
       mechanize
 
 GEM
@@ -46,8 +46,7 @@ GEM
       rb-inotify (>= 0.9)
       rb-kqueue (>= 0.2)
     lumberjack (1.0.4)
-    maruku (0.6.1)
-      syntax (>= 1.0.0)
+    maruku (0.7.0)
     mechanize (2.7.2)
       domain_name (~> 0.5, >= 0.5.1)
       http-cookie (~> 1.0.0)
@@ -82,7 +81,6 @@ GEM
     safe_yaml (0.7.1)
     slop (3.4.6)
     stringex (2.1.0)
-    syntax (1.0.0)
     thor (0.18.1)
     unf (0.1.2)
       unf_ext

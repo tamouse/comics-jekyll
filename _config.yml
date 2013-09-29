@@ -7,4 +7,4 @@ author:       tamouse
 paginate:     5
 paginate_path: "comics/page:num"
 posts:        "_posts"
-images:       images
+download_path: images
