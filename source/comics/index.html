@@ -1,0 +1,32 @@
+---
+layout: default
+---
+
+<div id="home">
+  <h1>{{ site.name }}</h1>
+  <ul class="posts">
+    {% for post in paginator.posts %}
+      <li><span>{{ post.date | date_to_string }}</span> &raquo; <a href="{{ post.url }}">{{ post.title }}</a></li>
+    {% endfor %}
+  </ul>
+</div>
+
+<!-- Pagination links -->
+<div class="pagination">
+  <div class="previous-page" style="float:left">
+    {% if paginator.previous_page %}
+    <a href="{{ paginator.previous_page_path }}" class="previous">Previous</a>
+    {% else %}
+    <span class="previous">Previous</span>
+    {% endif %}
+  </div>
+  
+  <div class="next-page" style="float:right">
+    {% if paginator.next_page %}
+    <a href="/page{{ paginator.next_page }}" class="next">Next</a>
+    {% else %}
+    <span class="next ">Next</span>
+    {% endif %}
+  </div>
+  <div style="clear:both"></div>
+</div>
