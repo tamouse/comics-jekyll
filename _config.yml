@@ -4,7 +4,7 @@ pygments:     true
 source:       source
 destination:  public
 author:       tamouse
-paginate:     5
+paginate:     50
 paginate_path: "comics/page:num"
 posts:        "_posts"
 download_path: images
