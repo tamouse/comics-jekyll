@@ -20,6 +20,7 @@ source         = config.delete("source")        || "source"
 destination    = config.delete("destination")   || "public"
 posts_dir      = config.delete("posts")         || "_posts"
 download_dir   = config.delete("download_path") || "images"
+home_page      = config.delete("home_page")     || "index.html"
 
 timestamp      = Time.now.to_s
 
@@ -32,14 +33,14 @@ CLOBBER_LIST = [Dir[File.join(ROOT,destination,'**','*')],
 
 task :default => :update
 
-desc "Nightly Update"
-task :update => [:go_fetch, :get_files, :write_posts, :write_index] do
-  system "jekyll build"
   
-  run_data = {}
-  run_data[:run_date] = timestamp
-  run_data[:comics] = @comics
-  File.write('.last_run.yaml',run_data.to_yaml)
+@run_data = {}
+@run_data[:run_date] = timestamp
+
+desc "Nightly Update"
+task :update => [:go_fetch, :get_files, :write_posts, :write_today_post, :replace_home_page] do
+  system "jekyll build"
+  File.write('.last_run.yaml',@run_data.to_yaml)
 end
 
 desc "retrieve go comics"
@@ -64,6 +65,8 @@ overthehedge onebighappy forbetterorworse preteena]
       next
     end
   end
+
+  @run_data[:comics] = @comics
 
 end
 
@@ -141,17 +144,19 @@ def write_error(comic,source,posts_dir)
 
 end
 
-desc "Write index for the current update"
-task :write_index => :write_posts do
-  index = File.join(source,'index.html')
-  File.unlink(index) if File.exists?(index)
-  File.open(index,'w') do |file|
+desc "Write today's comics for the current update"
+task :write_today_post => :write_posts do
+  filename = File.join(source,posts_dir,"#{Time.now.strftime("%Y-%m-%d")}-today-s-comics.html")
+  File.unlink(filename) if File.exists?(filename)
+  File.open(filename,'w') do |file|
     file.puts <<-EOT
 ---
 layout: default
 ---
-<h1>Latest Comics</h1>
+<h1>Comics for #{Time.now.strftime("%d %m %Y")}</h1>
 EOT
+
+
     FORMAT = <<-EOT
 <h2>%s <small>%s</small></h2><div class="post"><img src="/#{download_dir}/%s"></div>
 EOT
@@ -164,7 +169,22 @@ EOT
     file.puts "<footer>Site updated at #{timestamp}</footer>"
   end
 
+  @run_data[:todays_post] = filename
+
 end
+
+desc "Replace the home page with the latest page update"
+task :replace_home_page do
+  actual_home_page = File.join(ROOT,source,home_page)
+  todays_post = File.join(ROOT,@run_data[:todays_post])
+  $logger.debug "todays_post: #{todays_post}"
+  File.unlink(actual_home_page) if File.exists?(actual_home_page)
+  $logger.info "Creating home page #{actual_home_page} from today's post #{todays_post}".tap{|t| puts t}
+  raise "#{actual_home_page} exists!?!?!" if File.exists?(actual_home_page)
+  File.symlink(todays_post, actual_home_page)
+end
+
+
 
 desc "Clobber all generated files"
 task :clobber do
