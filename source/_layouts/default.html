@@ -10,19 +10,21 @@
         <link rel="stylesheet" href="/css/syntax.css">
 
         <!-- Custom CSS -->
-        <!-- <link rel="stylesheet" href="/css/main.css"> -->
+        <link rel="stylesheet" href="/css/main.css">
 
     </head>
     <body>
 
         <div class="site">
-          <div class="header">
-            <h1 class="title"><a href="/">{{ site.name }}</a></h1>
-            <a class="extra" href="/">home</a>
-            <a class="extra" href="/comics/">comics</a>
+          <ul class="header">
+            <li><a href="/">{{ site.name }}</a></li>
+            <li><a class="extra" href="/">home</a></li>
+            <li><a class="extra" href="/comics/">comics</a></li>
           </div>
 
-          {{ content }}
+          <div id="comics" class="content">
+            {{ content }}
+          </div>
 
           <div class="footer">
           </div>

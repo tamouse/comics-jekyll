@@ -8,3 +8,26 @@ paginate:     50
 paginate_path: "comics/page:num"
 posts:        "_posts"
 download_path: images
+comics:
+  go_comics:
+    - nonsequitur
+    - calvinandhobbes
+    - doonesbury
+    - pearlsbeforeswine
+    - dilbert-classics
+    - culdesac
+    - stonesoup
+    - roseisrose
+    - darksideofthehorse
+    - tomthedancingbug
+    - heartofthecity
+    - getfuzzy
+    - pickles
+    - skinhorse
+    - ozy-and-millie
+    - overthehedge
+    - onebighappy
+    - forbetterorworse
+    - preteena
+  other:
+    - xkcd: Xkcd

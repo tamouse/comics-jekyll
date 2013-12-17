@@ -7,3 +7,4 @@ source/index.html
 source/_posts/*.html
 
 source/_posts/*-error.markdown
+.crontab.log

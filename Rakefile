@@ -1,18 +1,16 @@
 require 'rubygems'
 require 'bundler/setup'
 
+require './log4r-setup'
+
 require 'yaml'
 require 'erb'
 require 'scrapers'
 require 'awesome_print'
-require 'logger'
 require 'stringex'
-
-
-ROOT = File.dirname(__FILE__)
-FileUtils.mkdir_p(File.join(ROOT,'log'))
-$logger = Logger.new(File.join(ROOT,'log','rake.log'))
-$logger.level = Logger::DEBUG
+require 'active_support'
+require 'highline/import'
+require 'open3'
 
 config = YAML.load(File.read(File.join(ROOT,"_config.yml")))
 
@@ -21,6 +19,9 @@ destination    = config.delete("destination")   || "public"
 posts_dir      = config.delete("posts")         || "_posts"
 download_dir   = config.delete("download_path") || "images"
 home_page      = config.delete("home_page")     || "index.html"
+comic_list     = config.delete("comics")        || {"go_comics" => %w[calvinandhobbes]}
+
+@comics = []
 
 timestamp      = Time.now.to_s
 
@@ -31,36 +32,55 @@ CLOBBER_LIST = [Dir[File.join(ROOT,destination,'**','*')],
                 File.join(ROOT,".last_run.yaml"),
                ].flatten.select{|fn| File.exists? fn}.compact
 
-task :default => :update
+FORMAT = %Q{
+<h2>%s <small>%s</small></h2>
+<div class="post">
+  <img src="/#{download_dir}/%s" title="%s" alt="%s">
+</div>
+}
 
-  
+ERROR_FORMAT = %Q{
+<h2>%s</h2>
+<div class="post">%s</div>
+}
+
 @run_data = {}
 @run_data[:run_date] = timestamp
 
+task :default => :update
+
 desc "Nightly Update"
-task :update => [:go_fetch, :get_files, :write_posts, :write_today_post, :replace_home_page] do
-  system "jekyll build"
+task :update => [:start_update, :go_fetch, :fetch_other, :get_files,
+                 :write_today_post, :replace_home_page,
+                 :build_site
+                ] do |t|
+  
   File.write('.last_run.yaml',@run_data.to_yaml)
+  Log.info "#{t.name} Completed"
+end
+
+task :start_update do |t|
+  Log.info "Starting comics update"
 end
 
 desc "retrieve go comics"
 task :go_fetch do |t|
 
-  @comics = []
-
-  # TODO throw this into _config.yml
-  go_comics      = %w[nonsequitur calvinandhobbes doonesbury pearlsbeforeswine dilbert-classics culdesac
-stonesoup roseisrose darksideofthehorse tomthedancingbug heartofthecity getfuzzy pickles skinhorse ozy-and-millie
-overthehedge onebighappy forbetterorworse preteena]
+  go_comics      = comic_list["go_comics"]
 
   go_comics.each do |s|
-    $logger.info "getting comic #{s}".tap{|t| puts t}
+    Log.info "getting comic #{s}"
     begin
-      @comics << Scrapers::GoComics.scrape(s)
+      comic = Scrapers::GoComics.scrape(s)
+      comic.merge({
+                    "img_title" => comic[:title],
+                    "img_alt"   => comic[:comic]
+                  })
+      @comics << comic
     rescue Exception => e
-      $logger.error "Error retrieving #{s}".tap{|t| puts t}
-      $logger.debug "#{e.class}: #{e}"
-      $logger.debug e.backtrace.join("\n")
+      Log.error "Error retrieving #{s}"
+      Log.debug "#{e.class}: #{e}"
+      Log.debug e.backtrace.join("\n")
       @comics << {:comic => s, :errors => {:error => true, :error_type => e.class.to_s, :message => e.to_s, :backtrace => e.backtrace.dup}}
       next
     end
@@ -70,18 +90,48 @@ overthehedge onebighappy forbetterorworse preteena]
 
 end
 
+desc "retrieve other comics"
+task :fetch_other do |t|
+  comic_list["other"].each do |comic|
+    name = comic.keys.first
+    scraper = comic.values.first
+    begin
+      Log.info "fetching #{name}"
+      scraper = ActiveSupport::Inflector.constantize("Scrapers::#{scraper}")
+      result = scraper.scrape
+      result[:comic] = name
+      result[:title] = "#{name}: #{result[:title]}"
+      @comics << result
+    rescue Exception => e
+      Log.error "Error retrieving #{name}"
+      Log.debug "#{e.class}: #{e}"
+      Log.debug e.backtrace.join("\n")
+      @comics << {
+        :comic => name,
+        :errors => {
+          :error => true,
+          :error_type => e.class.to_s,
+          :message => e.to_s,
+          :backtrace => e.backtrace.dup
+        }
+      }
+      next
+    end
+  end
+end
+
 desc "Get the comic files"
-task :get_files => :go_fetch do
+task :get_files => [:go_fetch, :fetch_other] do
   FileUtils.mkdir_p File.join source,download_dir
   @comics.each do |comic|
     next if comic[:errors]
-    $logger.info "retrieving comic file #{comic[:img_src]}".tap{|t| puts t}
+    Log.info "retrieving comic file #{comic[:img_src]}"
     begin
-      download = Scrapers::Download.download(comic[:img_src],File.join(source,download_dir))
+      download = Scrapers::Download.download(comic[:img_src],File.join(source,download_dir),true)
     rescue Exception => e
-      $logger.error "Error getting file #{comic[:filename]}".tap{|t| puts t}
-      $logger.debug "#{e.class}: #{e}".tap{|t| puts t}
-      $logger.debug e.backtrace.join("\n")
+      Log.error "Error getting file #{comic[:filename]}"
+      Log.debug "#{e.class}: #{e}"
+      Log.debug e.backtrace.join("\n")
       comic[:errors] = {:error => true, :error_type => e.class.to_s, :message => e.to_s, :backtrace => e.backtrace.dup}
       next
     end
@@ -104,20 +154,23 @@ end
 def write_post(comic,source,posts_dir)
   filename = File.join(source,posts_dir,"#{comic[:pubdate]}-#{comic[:title].to_url}.html")
     
-  $logger.info "Creating post #{filename}".tap{|t| puts t}
+  Log.info "Creating post #{filename}"
   File.open(filename,'w') do |post|
-    post.puts <<-EOT
----
-layout: comic
-title: "#{comic[:title]}"
-date: "#{comic[:pubdate]}"
-source_url: #{comic[:url]}
-img_src: #{comic[:img_src]}
-filename: #{comic[:filename]}
-post_path: #{filename}
-category: #{comic[:comic]}
----
-EOT
+    front_matter = {
+      "layout" => "comic",
+      "title" => comic[:title],
+      "date" => comic[:pubdate],
+      "source_url" => comic[:url],
+      "img_src" => comic[:img_src],
+      "filename" => comic[:filename],
+      "post_path" => filename,
+      "category" => comic[:comic],
+      "img_title" => comic[:img_title],
+      "img_alt" => comic[:img_alt],
+}
+
+    post.puts front_matter.to_yaml
+    post.puts "---"
   end
 
 end
@@ -130,7 +183,7 @@ def write_error(comic,source,posts_dir)
   }
 
   filename = File.join(source,posts_dir,"#{Time.now.strftime("%Y-%m-%d")}-#{comic[:comic].to_url}-error.markdown")
-  $logger.info "Writing error report #{filename}".tap{|t| puts t}
+  Log.info "Writing error report #{filename}"
   File.open(filename,'w') do |error_report|
     error_report.puts front_matter.to_yaml
     error_report.puts "---"
@@ -145,25 +198,27 @@ def write_error(comic,source,posts_dir)
 end
 
 desc "Write today's comics for the current update"
-task :write_today_post => :write_posts do
+task :write_today_post => :get_files do
+  Log.info "Write today's comics"
   filename = File.join(source,posts_dir,"#{Time.now.strftime("%Y-%m-%d")}-today-s-comics.html")
   File.unlink(filename) if File.exists?(filename)
+  title = "Comics for #{Time.now.strftime("%d %m %Y")}"
   File.open(filename,'w') do |file|
     file.puts <<-EOT
 ---
 layout: default
+title: #{title}
+date: #{Time.now}
 ---
-<h1>Comics for #{Time.now.strftime("%d %m %Y")}</h1>
+<h1>#{title}</h1>
 EOT
-
-
-    FORMAT = <<-EOT
-<h2>%s <small>%s</small></h2><div class="post"><img src="/#{download_dir}/%s"></div>
-EOT
-
     @comics.each do |comic|
-      next if comic[:errors]
-      file.printf FORMAT, comic[:title], comic[:pubdate], comic[:filename]
+      if comic[:errors]
+        file.printf ERROR_FORMAT, comic[:title], comic[:errors][:message]
+        write_error(comic,source,posts_dir)
+      else
+        file.printf FORMAT, comic[:title], comic[:pubdate], comic[:filename], comic[:img_title], comic[:img_alt]
+      end
     end
 
     file.puts "<footer>Site updated at #{timestamp}</footer>"
@@ -174,33 +229,40 @@ EOT
 end
 
 desc "Replace the home page with the latest page update"
-task :replace_home_page do
+task :replace_home_page => :write_today_post do
   actual_home_page = File.join(ROOT,source,home_page)
   todays_post = File.join(ROOT,@run_data[:todays_post])
-  $logger.debug "todays_post: #{todays_post}"
+  Log.debug "todays_post: #{todays_post}"
   File.unlink(actual_home_page) if File.exists?(actual_home_page)
-  $logger.info "Creating home page #{actual_home_page} from today's post #{todays_post}".tap{|t| puts t}
+  Log.info "Creating home page #{actual_home_page} from today's post #{todays_post}"
   raise "#{actual_home_page} exists!?!?!" if File.exists?(actual_home_page)
   File.symlink(todays_post, actual_home_page)
 end
 
-
+desc "Build the site with Jekyll"
+task :build_site do |t|
+  Log.info "Building site"
+  cap_out, cap_status = Open3.capture2e("jekyll build")
+  if cap_status.success?
+    Log.info "Jekyll succeeded"
+    Log.debug cap_out
+  else
+    Log.error "Jekyll failed: Error: #{cap_status}"
+    Log.debug cap_out
+  end
+end
 
 desc "Clobber all generated files"
 task :clobber do
   if CLOBBER_LIST.empty?
-    $logger.info "nothing to clobber".tap{|t| puts t}
-    exit
-  end
-  
-  puts "Clobbering: #{CLOBBER_LIST.join(" ")}"
-  print "Ok? "
-  resp = $stdin.gets.chomp
-  if (resp =~ /^y/i)
-    CLOBBER_LIST.each do |fn|
-      $logger.info "unlinking #{fn}".tap{|t| puts t}
-      File.unlink(fn) rescue nil
+    Log.info "nothing to clobber"
+  else
+    say "Clobbering: #{CLOBBER_LIST.join(" ")}"
+    if ask("Ok?  ") {|q| q.validate = /\A[yn]\z/i ; }.downcase == 'y'
+      CLOBBER_LIST.each do |fn|
+        Log.info "unlinking #{fn}"
+        File.unlink(fn) rescue nil
+      end
     end
   end
-  
 end
