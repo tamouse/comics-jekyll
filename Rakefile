@@ -140,7 +140,7 @@ task :get_files => [:go_fetch, :fetch_other] do
 end
 
 desc "Write the posts for this fetch"
-task :write_posts => :get_files do
+task :write_posts do
   FileUtils.mkdir_p File.join(source,posts_dir)
   @comics.each do |comic|
     if comic[:errors]
@@ -198,7 +198,7 @@ def write_error(comic,source,posts_dir)
 end
 
 desc "Write today's comics for the current update"
-task :write_today_post => :get_files do
+task :write_today_post do
   Log.info "Write today's comics"
   filename = File.join(source,posts_dir,"#{Time.now.strftime("%Y-%m-%d")}-today-s-comics.html")
   File.unlink(filename) if File.exists?(filename)
@@ -229,11 +229,13 @@ EOT
 end
 
 desc "Replace the home page with the latest page update"
-task :replace_home_page => :write_today_post do
+task :replace_home_page do
   actual_home_page = File.join(ROOT,source,home_page)
+  Log.debug "actual_home_page: #{actual_home_page}"
   todays_post = File.join(ROOT,@run_data[:todays_post])
   Log.debug "todays_post: #{todays_post}"
-  File.unlink(actual_home_page) if File.exists?(actual_home_page)
+  FileUtils.rm_f(actual_home_page)
+  Log.debug "Dir[actual_home_page]: #{Dir[actual_home_page]}"
   Log.info "Creating home page #{actual_home_page} from today's post #{todays_post}"
   raise "#{actual_home_page} exists!?!?!" if File.exists?(actual_home_page)
   File.symlink(todays_post, actual_home_page)
