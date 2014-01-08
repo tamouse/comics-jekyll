@@ -1,10 +1,9 @@
-public/
+log
+.bundle/
+.crontab.log
 .last_run.yaml
-log/
+public/
+source/_posts/
+source/index.html
 tmp/
 source/images/
-source/index.html
-source/_posts/*.html
-
-source/_posts/*-error.markdown
-.crontab.log
