@@ -9,3 +9,5 @@ gem "jekyll"
 gem "activesupport", "~> 4.0"
 gem 'highline'
 gem 'log4r'
+gem "whenever"
+gem 'capistrano', '~> 2.15'
