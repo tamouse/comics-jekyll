@@ -10,4 +10,4 @@ gem "activesupport", "~> 4.0"
 gem 'highline'
 gem 'log4r'
 gem "whenever"
-gem 'capistrano', '~> 2.15'
+gem 'capistrano', '~> 3.1.0'

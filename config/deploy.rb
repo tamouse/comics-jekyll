@@ -1,33 +1,41 @@
-require 'bundler/capistrano'
+# config valid only for Capistrano 3.1
+lock '3.1.0'
 
-set :application, "comics"
-set :repository,  "git@github.com:tamouse/comics-jekyll.git"
+set :application, 'comics'
+set :repo_url, 'git@github.com:tamouse/comics-jekyll.git'
 
-set :scm, :git # You can set :scm explicitly or Capistrano will make an intelligent guess based on known version control directory names
-# Or: `accurev`, `bzr`, `cvs`, `darcs`, `git`, `mercurial`, `perforce`, `subversion` or `none`
+# Default branch is :master
+# ask :branch, proc { `git rev-parse --abbrev-ref HEAD`.chomp }
 
-set :deploy_to, "/home/tamara/Sites/tamouse.org/comics"
-server "comics.tamouse.org", :web
+# Default deploy_to directory is /var/www/my_app
+set :deploy_to, '/home/tamara/Sites/tamouse.org/comics'
 
-# if you want to clean up old releases on each deploy uncomment this:
-# after "deploy:restart", "deploy:cleanup"
+# Default value for :scm is :git
+set :scm, :git
 
-# if you're still using the script/reaper helper you will need
-# these http://github.com/rails/irs_process_scripts
+# Default value for :format is :pretty
+# set :format, :pretty
 
-# If you are using Passenger mod_rails uncomment this:
-# namespace :deploy do
-#   task :start do ; end
-#   task :stop do ; end
-#   task :restart, :roles => :app, :except => { :no_release => true } do
-#     run "#{try_sudo} touch #{File.join(current_path,'tmp','restart.txt')}"
-#   end
-# end
+# Default value for :log_level is :debug
+# set :log_level, :debug
 
-set :user, "tamara"
-set :scm_username, "tamouse"
-set :use_sudo, false
+# Default value for :pty is false
+# set :pty, true
 
-after "deploy:create_symlink" do
-  run "cd #{release_path} && bundle exec whenever --update-crontab && crontab -l"
+# Default value for :linked_files is []
+# set :linked_files, %w{config/database.yml}
+set :linked_files, %w{config/schedule.rb}
+
+# Default value for linked_dirs is []
+# set :linked_dirs, %w{bin log tmp/pids tmp/cache tmp/sockets vendor/bundle public/system}
+set :linked_dirs, %w{public source vendor/bundle tmp log}
+
+# Default value for default_env is {}
+# set :default_env, { path: "/opt/ruby/bin:$PATH" }
+
+# Default value for keep_releases is 5
+# set :keep_releases, 5
+
+namespace :deploy do
+
 end
