@@ -66,7 +66,7 @@ end
 desc "retrieve go comics"
 task :go_fetch do |t|
 
-  go_comics      = comic_list["go_comics"]
+  go_comics      = comic_list.fetch("go_comics",[])
 
   go_comics.each do |s|
     Log.info "getting comic #{s}"
