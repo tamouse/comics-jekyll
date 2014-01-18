@@ -28,3 +28,6 @@ set :user, "tamara"
 set :scm_username, "tamouse"
 set :use_sudo, false
 
+after "deploy:create_symlink" do
+  run "cd #{release_path} && bundle exec whenever --update-crontab && crontab -l"
+end
