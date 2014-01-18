@@ -92,7 +92,8 @@ end
 
 desc "retrieve other comics"
 task :fetch_other do |t|
-  comic_list["other"].each do |comic|
+  other_list = comic_list.fetch("other",[])
+  other_list.each do |comic|
     name = comic.keys.first
     scraper = comic.values.first
     begin
